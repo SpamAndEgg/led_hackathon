@@ -16,8 +16,6 @@
 // -------------------- SETUP VARIABLES -----------------------
 // Counter for the number of main loop iterations there has already been. 
 uint32_t counter = 0;
-// Brightness can have values from 0 - 255
-int brightness = 150;
 // CRGB is a class from the FastLED package, containing a value for R, G and B.
 // pixel_buffer contains the data that will be written regularly to the LED strip.
 CRGB pixel_buffer[N_LEDS];
@@ -45,44 +43,6 @@ void update_button()
   last_state = button_state;
 }
 
-
-/*
-unsigned long time_button_pressed = 0;
-uint8_t last_button_state = false;
-const int BUTTON_NO_PRESS = 0;
-const int BUTTON_NO_EFFECT = 1;
-const int BUTTON_CHANGE_MODE = 2;
-const int PRESS_TIME_SAFTY = 20;       // 20 milliseconds
-void update_button() 
-{
-
-  bool button_state = digitalRead(PIN_BUTTON);
-
-  if (button_state == HIGH)
-  // HIGH state means button is not pressed
-  {
-    if (last_button_state == BUTTON_CHANGE_MODE)
-    { // short press
-      last_button_state = BUTTON_NO_PRESS;
-      counter = counter + 1;
-    }
-  }
-  else
-  // button_state == LOW --> button is currently pressed.
-  {
-    if (last_button_state == BUTTON_NO_PRESS)
-    {
-      time_button_pressed = millis();
-      last_button_state = BUTTON_NO_EFFECT;
-    }
-    else if (millis() - time_button_pressed > PRESS_TIME_SAFTY)
-    { // pressed long enough to change mode
-      last_button_state = BUTTON_CHANGE_MODE;
-    }
-  }
-}
-*/
-
 // -------------------- SETUP -----------------------------
 
 void setup() {
@@ -92,8 +52,6 @@ void setup() {
 
   // Setup pullup resistors 
   pinMode(PIN_BUTTON, INPUT_PULLUP);
-
-  Serial.begin(115200);
 
 }
 
@@ -105,7 +63,7 @@ void loop() {
 
   update_button();
 
-  pixel_buffer[counter % N_LEDS] = CRGB:BLUE;
+  pixel_buffer[counter % N_LEDS] = CRGB::Blue;
 
   // Write pixel buffer to the LED strip.
   FastLED.show();

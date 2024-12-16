@@ -7,10 +7,10 @@
 
 // -------------------- DEFINE CONSTANTS ----------------------
 #define PIN_ENCODER_1 22
-#define PIN_ENCODER_2 27
-// LED AND PIN_BUTTON ARE SWITCHED FOR ONE MODEL
-#define PIN_LED_STRIP 18  
-#define PIN_BUTTON 23  
+#define PIN_ENCODER_2 17
+// LED AND PIN_BUTTON ARE SWITCHED FOR ONE MODEL (23 and 18)
+#define PIN_LED_STRIP 23  
+#define PIN_BUTTON 18  
 // Number of LEDs on the LED strip
 #define N_LEDS 250
 #define N_MODE 1
@@ -25,7 +25,7 @@ uint32_t counter = 0;
 // Track which mode currently is active. The mode can be switched with the button.
 uint8_t mode = 0;
 // Brightness can have values from 0 - 255
-int brightness = 150;
+int16_t led_brightness = 150;
 uint8_t animation_speed = 150;
 // CRGB is a class from the FastLED package, containing a value for R, G and B.
 // pixel_buffer contains the data that will be written regularly to the LED strip.
@@ -34,105 +34,74 @@ CRGB pixel_buffer[N_LEDS];
 
 // -------------------- DEFINE FUNCTIONS -----------------------
 
-// -------------------- FUNCTION BUTTON
-unsigned long time_button_pressed = 0;
-uint8_t last_button_state = false;
-const int BUTTON_NO_PRESS = 0;
-const int BUTTON_NO_EFFECT = 1;
-const int BUTTON_CHANGE_MODE = 2;
-const int PRESS_TIME_SAFTY = 20;       // 20 milliseconds
-void update_button() 
+void update_button()
 {
-
   bool button_state = digitalRead(PIN_BUTTON);
-
-  if (button_state == HIGH)
-  // HIGH state means button is not pressed
+  static bool last_state = true;
+  
+  if (button_state == LOW)
   {
-    if (last_button_state == BUTTON_CHANGE_MODE)
-    { // short press
-      last_button_state = BUTTON_NO_PRESS;
-      mode = (mode + 1) % N_MODE;
-      Serial.println("Button was pressed");
-    }
-  }
-  else
-  // button_state == LOW --> button is currently pressed.
-  {
-    if (last_button_state == BUTTON_NO_PRESS)
+    // Button is pressed. Write your code here
+    if (button_state != last_state)
     {
-      time_button_pressed = millis();
-      last_button_state = BUTTON_NO_EFFECT;
-    }
-    else if (millis() - time_button_pressed > PRESS_TIME_SAFTY)
-    { // pressed long enough to change mode
-      last_button_state = BUTTON_CHANGE_MODE;
+      // Button is now pressed, but wasn't pressed last loop
+      mode = (mode + 1) % N_MODE;
     }
   }
+  last_state = button_state;
 }
-
 
 // -------------------- FUNCTION ENCODER
 
+unsigned long _lastIncReadTime = micros(); 
+unsigned long _lastDecReadTime = micros(); 
+int _pauseLength = 25000;
+int _fastIncrement = 3;
 
-unsigned long previousMillis = 0;
-const long debounce = 80;
-
-int previousStateA;
-int previousStateB;
-int currentStateA;
-int currentStateB;
-
-volatile int flagStates;
-volatile int flag;
-
-
-
-
-
-
-
+const int ENCODER_MIN = 0;
+volatile int encoder_value;
 
 void read_encoder() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= debounce) {
-    previousMillis = currentMillis;
-    currentStateA = digitalRead(PIN_ENCODER_1); // Simple read of current HIGH or LOW state
-    currentStateB = digitalRead(PIN_ENCODER_2);
-    flagStates = 1;
-    if (previousStateA == currentStateA && previousStateB == currentStateB) { // Triggerd only if current state of both pins are equal to previous
-      flag = 1;
+  // Encoder interrupt routine for both pins. Updates counter
+  // if they are valid and have rotated a full indent
+ 
+  static uint8_t old_AB = 3;  // Lookup table index
+  static int8_t encval = 0;   // Encoder value  
+  static const int8_t enc_states[]  = {0,-1,1,0,1,0,0,-1,-1,0,0,1,0,1,-1,0}; // Lookup table
+
+  old_AB <<=2;  // Remember previous state
+
+  if (digitalRead(PIN_ENCODER_1)) old_AB |= 0x02; // Add current state of pin A
+  if (digitalRead(PIN_ENCODER_2)) old_AB |= 0x01; // Add current state of pin B
+  
+  encval += enc_states[( old_AB & 0x0f )];
+  int16_t changevalue = 0;
+  // Update counter if encoder has rotated a full indent, that is at least 4 steps
+  if( encval < -3 )
+  {        // Four steps forward
+    changevalue = 5;
+    if((micros() - _lastIncReadTime) < _pauseLength) {
+      changevalue = _fastIncrement * changevalue; 
     }
-    previousStateA = currentStateA;
-    previousStateB = currentStateB;
+    _lastIncReadTime = micros();             // Update counter
+    encval = 0;
   }
-}
-
-
-
-/*
-int state_a;
-int state_a_last;
-
-void read_encoder() 
-{
-  state_a = digitalRead(PIN_ENCODER_1);
-  // If the previous and the current state of the encoder A are different, that means a Pulse has occured
-  if (state_a != state_a_last)
-  {
-    // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
-    if (digitalRead(PIN_ENCODER_2) != state_a)
-    {
-      Serial.println("Clockwise");
+  else if ( encval > 3 ) 
+  {        // Four steps backward
+    changevalue = -5;
+    if((micros() - _lastDecReadTime) < _pauseLength) {
+      changevalue = _fastIncrement * changevalue; 
     }
-    else
-    {
-      Serial.println("Counterclockwise");
-    }
+    _lastDecReadTime = micros();
+    encval = 0;
   }
-  state_a_last = state_a;
-}
-*/
+  
+  led_brightness = std::min(std::max(led_brightness + changevalue, 0), 255); 
+  Serial.println(led_brightness);
+  Serial.println(changevalue);
+} 
+ 
+
 // -------------------- FUNCTION WHEEL (GET RAINBOW COLORS BY NUMBER 0 - 255)
 CRGB wheel(byte wheel_pos)
 {
@@ -212,10 +181,9 @@ void Star::update()
   }
 }
 
-
-
 // -------------------- CLASS DROP 
 
+/*
 class Drop
 {
 public:
@@ -231,13 +199,13 @@ public:
     void random_init();
     void update();
 };
-
+*/
 
 // -------------------- SETUP -----------------------------
 
 // ANIMATION SETUP 
 Star stars[N_STAR];
-Drop drops[N_DROP];
+//Drop drops[N_DROP];
 
 void setup() {
   // put your setup code here, to run once:
@@ -251,11 +219,8 @@ void setup() {
   pinMode(PIN_ENCODER_2, INPUT_PULLUP);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
 
-  // Setup rotary encoder
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_1), read_encoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_2), read_encoder, CHANGE);
-  previousStateA = digitalRead(PIN_ENCODER_1); // Storage of state before the interrupt
-  previousStateB = digitalRead(PIN_ENCODER_2);
 
   Serial.begin(115200);
 
@@ -273,19 +238,6 @@ void loop() {
 
   update_button();
   //read_encoder();
-  if (flagStates == 1) {
-    noInterrupts();
-    Serial.print("A: "); Serial.print(currentStateA);
-    Serial.print(" "); Serial.print(currentStateB); Serial.println(" :B");
-    flagStates = 0;
-    interrupts();
-  }
-  if (flag == 1) {
-    noInterrupts();
-    Serial.println("Same values as previous!");
-    flag = 0;
-    interrupts();
-  }
 
   // ANIMATIONS
   if (mode == 0)
@@ -300,7 +252,7 @@ void loop() {
   }
 
   // Set the brightness.
-  FastLED.setBrightness(brightness);
+  FastLED.setBrightness(led_brightness);
   // Write pixel buffer to the LED strip.
   FastLED.show();
 
@@ -309,6 +261,6 @@ void loop() {
   {
     pixel_buffer[i_led] = CRGB::Black;
   }
-  delay(20);
+
 }
 

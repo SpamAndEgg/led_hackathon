@@ -23,7 +23,7 @@ CRGB pixel_buffer[N_LEDS];
 
 // -------------------- CLASSES ---------------------------
 // -------------------- CLASS STAR 
-CRGB COLORS_TO_CHOSE_FROM[5] = {CRGB::YELLOW, CRGB::RED, CRGB::PINK, CRGB::WHITE, CRGB::GREEN};
+CRGB COLORS_TO_CHOSE_FROM[5] = {CRGB::Yellow, CRGB::Red, CRGB::Pink, CRGB::White, CRGB::Green};
 class Star
 {
 public:
