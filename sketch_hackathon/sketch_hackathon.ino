@@ -17,6 +17,7 @@
 // ANIMATION CONSTANTS
 #define N_STAR 20
 #define N_DROP 5
+#define DROP_DELAY_COUNTER 500
 
 
 // -------------------- SETUP VARIABLES -----------------------
@@ -26,7 +27,7 @@ uint32_t counter = 0;
 uint8_t mode = 0;
 // Brightness can have values from 0 - 255
 int16_t led_brightness = 150;
-uint8_t animation_speed = 150;
+uint16_t animation_speed = 20;
 // CRGB is a class from the FastLED package, containing a value for R, G and B.
 // pixel_buffer contains the data that will be written regularly to the LED strip.
 CRGB pixel_buffer[N_LEDS];
@@ -149,15 +150,15 @@ public:
   CRGB color;
 };
 
-Star::Star(){}
+Star::Star(){};
 
 void Star::random_init()
 {
-  lifetime_tot = random(5000, 10000);
+  lifetime_tot = random(1500, 4000);
   lifetime = lifetime_tot;
   brightness = 0;
   pos = random(N_LEDS);
-  delay_frame = random(5000);
+  delay_frame = random(4000);
   // Get a random rainbow color.
   color = wheel(random(256));
 
@@ -181,14 +182,25 @@ void Star::update()
   }
 }
 
+Star stars[N_STAR];
+
+void star_animation() {
+    for (uint8_t i_star = 0; i_star < N_STAR; i_star++)
+  {
+    stars[i_star].update();
+    pixel_buffer[stars[i_star].pos].r += map(stars[i_star].brightness, 0, stars[i_star].lifetime_tot, 0, stars[i_star].color.r);
+    pixel_buffer[stars[i_star].pos].g += map(stars[i_star].brightness, 0, stars[i_star].lifetime_tot, 0, stars[i_star].color.g);
+    pixel_buffer[stars[i_star].pos].b += map(stars[i_star].brightness, 0, stars[i_star].lifetime_tot, 0, stars[i_star].color.b);
+  }
+}
+
 // -------------------- CLASS DROP 
 
-/*
+
 class Drop
 {
 public:
     Drop();
-    uint16_t n_pixel;
     uint16_t pos_head;
     uint16_t pos_between_head_jump;
     uint8_t length;
@@ -199,13 +211,109 @@ public:
     void random_init();
     void update();
 };
-*/
+
+Drop::Drop(){};
+
+void Drop::random_init()
+{
+  delay_counter = random(300000, 50000);
+  speed = random(5, 8);
+  //speed = 2;
+  length = random(3, 5);
+  pos_head = 0;
+  pos_between_head_jump = 0;
+
+  // If color_int is not zero, use rainbow color instead of color scheme
+  color_rainbow = random(1, 256);
+}
+
+void Drop::update()
+{
+  pos_between_head_jump += speed * animation_speed;
+  // If the delay counter is on, reduce it by one, otherwise update the drop pos_head.
+  if (delay_counter > 0)
+  {
+    delay_counter -= speed * animation_speed;
+    return;
+  }
+  pos_between_head_jump = 0;
+  pos_head++;
+  delay_counter = DROP_DELAY_COUNTER;
+  // Initiate the drop again if it not on the LED stripe anymore
+  if (pos_head > N_LEDS + length)
+  {
+    random_init();
+  }
+}
+
+Drop drops[N_DROP];
+
+void drop_animation()
+{
+  double temp_res;
+  float brightness_multiplier;
+  for (byte i_drop = 0; i_drop < N_DROP; i_drop++)
+  {
+    drops[i_drop].update();
+    temp_res = (double)(drops[i_drop].pos_between_head_jump) / (double)DROP_DELAY_COUNTER;
+    temp_res = std::min(1.0, temp_res);
+    // Here a drop is set. The drop effect is realized by reducing the brightness from the lowest pixel on to the top.
+    // Special cases for when the drop exceeds the LED stripe to the top or bottom have to be consindered.
+
+    // First, the visible part on the stripe is defined.
+    // The top pixel of the drop that can be seen (If all are seen, this is 0)
+    uint8_t dropindex_top;
+    // The bottom pixel of the drop that can be seen (If all are seen, this is the drop length)
+    uint8_t dropindex_bot;
+    if (drops[i_drop].pos_head < drops[i_drop].length)
+    {
+      // Case: The drop exceeds the LED stripe at the top, thus only the visible pixels at the drop bottom have to be shown.
+      dropindex_top = 0;
+      dropindex_bot = drops[i_drop].pos_head;
+    }
+    else if (drops[i_drop].pos_head > N_LEDS)
+    {
+      // Case: The drop exceeds the LED stripe at the bottom, thus only the upper drop pixels are visible.
+      dropindex_top = drops[i_drop].pos_head - N_LEDS;
+      dropindex_bot = drops[i_drop].length;
+    }
+    else
+    {
+      // Case: The whole drop can be displayed.
+      dropindex_top = 0;
+      dropindex_bot = drops[i_drop].length;
+    }
+    // Go through every drop pixel and adjust the brightness. The bottom pixel will have full brightness.
+    for (uint16_t i_droppixel = dropindex_top; i_droppixel < dropindex_bot; i_droppixel++)
+    {
+      brightness_multiplier = 0;
+      // If bottom pixel set to full brightness.
+      if (i_droppixel == 0)
+      {
+        brightness_multiplier = temp_res;
+      }
+      // If not the bottom pixel lower brightness, the more up the pixel the lower the brightness.
+      else
+      {
+        brightness_multiplier = ((double)(drops[i_drop].length) - (double)(i_droppixel) - temp_res) / ((double)(drops[i_drop].length) - 1.0);
+      }
+
+      uint16_t color_length = 16;
+      uint16_t wheel_selector = (drops[i_drop].color_rainbow + i_droppixel * color_length + (uint16_t)(temp_res * (double)color_length)) % 256;
+
+      CRGB color = wheel(wheel_selector);
+
+      // Update the pixel buffer.
+      pixel_buffer[drops[i_drop].pos_head - i_droppixel - 1].r += color.r;
+      pixel_buffer[drops[i_drop].pos_head - i_droppixel - 1].g += color.g;
+      pixel_buffer[drops[i_drop].pos_head - i_droppixel - 1].b += color.b;
+    }
+  }
+}
+
 
 // -------------------- SETUP -----------------------------
 
-// ANIMATION SETUP 
-Star stars[N_STAR];
-//Drop drops[N_DROP];
 
 void setup() {
   // put your setup code here, to run once:
@@ -228,6 +336,10 @@ void setup() {
   for (int i_star = 0; i_star < N_STAR; i_star++) {
     stars[i_star].random_init();
   }
+
+  for (int i_drop = 0; i_drop < N_DROP; i_drop++) {
+    drops[i_drop].random_init();
+  }
 }
 
 
@@ -237,19 +349,15 @@ void loop() {
   // put your main code here, to run repeatedly:
 
   update_button();
-  //read_encoder();
 
   // ANIMATIONS
   if (mode == 0)
   {
-    for (uint8_t i_star = 0; i_star < N_STAR; i_star++)
-    {
-      stars[i_star].update();
-      pixel_buffer[stars[i_star].pos].r += map(stars[i_star].brightness, 0, stars[i_star].lifetime_tot, 0, stars[i_star].color.r);
-      pixel_buffer[stars[i_star].pos].g += map(stars[i_star].brightness, 0, stars[i_star].lifetime_tot, 0, stars[i_star].color.g);
-      pixel_buffer[stars[i_star].pos].b += map(stars[i_star].brightness, 0, stars[i_star].lifetime_tot, 0, stars[i_star].color.b);
-    }
+
+
   }
+  star_animation();
+  drop_animation();
 
   // Set the brightness.
   FastLED.setBrightness(led_brightness);
