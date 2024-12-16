@@ -15,7 +15,8 @@
 #define N_LEDS 250
 #define N_MODE 1
 // ANIMATION CONSTANTS
-#define N_STAR 10
+#define N_STAR 20
+#define N_DROP 5
 
 
 // -------------------- SETUP VARIABLES -----------------------
@@ -211,15 +212,38 @@ void Star::update()
   }
 }
 
+
+
+// -------------------- CLASS DROP 
+
+class Drop
+{
+public:
+    Drop();
+    uint16_t n_pixel;
+    uint16_t pos_head;
+    uint16_t pos_between_head_jump;
+    uint8_t length;
+    CRGB color;
+    uint8_t color_rainbow;
+    uint32_t speed;
+    int32_t delay_counter;
+    void random_init();
+    void update();
+};
+
+
 // -------------------- SETUP -----------------------------
 
 // ANIMATION SETUP 
 Star stars[N_STAR];
+Drop drops[N_DROP];
 
 void setup() {
   // put your setup code here, to run once:
   randomSeed(analogRead(0));
 
+  // Define LED type, pin and array to use for the data 
   FastLED.addLeds<WS2812B, PIN_LED_STRIP, GRB>(pixel_buffer, N_LEDS);
 
   // Setup pullup resistors 
