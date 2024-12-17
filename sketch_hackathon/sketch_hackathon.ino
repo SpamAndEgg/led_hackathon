@@ -13,7 +13,7 @@
 #define PIN_BUTTON 18  
 // Number of LEDs on the LED strip
 #define N_LEDS 250
-#define N_MODE 1
+#define N_MODE 3
 // ANIMATION CONSTANTS
 #define N_STAR 20
 #define N_DROP 5
@@ -98,8 +98,6 @@ void read_encoder() {
   }
   
   led_brightness = std::min(std::max(led_brightness + changevalue, 0), 255); 
-  Serial.println(led_brightness);
-  Serial.println(changevalue);
 } 
  
 
@@ -131,8 +129,6 @@ CRGB wheel(byte wheel_pos)
   return CRGB(rgb[0], rgb[1], rgb[2]);
 };
 
-
-
 // -------------------- CLASSES ---------------------------
 
 // -------------------- CLASS STAR 
@@ -159,8 +155,12 @@ void Star::random_init()
   brightness = 0;
   pos = random(N_LEDS);
   delay_frame = random(4000);
-  // Get a random rainbow color.
-  color = wheel(random(256));
+  if (mode == 2) {
+    color = wheel(random(100, 150));
+  } else {
+    // Get a random rainbow color.
+    color = wheel(random(256));
+  }
 
 }
 
@@ -216,15 +216,19 @@ Drop::Drop(){};
 
 void Drop::random_init()
 {
-  delay_counter = random(300000, 50000);
+  delay_counter = random(30000, 150000);
   speed = random(5, 8);
   //speed = 2;
   length = random(3, 5);
   pos_head = 0;
   pos_between_head_jump = 0;
 
-  // If color_int is not zero, use rainbow color instead of color scheme
-  color_rainbow = random(1, 256);
+  if (mode == 2) {
+    color_rainbow = random(100, 150);
+  } else {
+    // Get a random rainbow color.
+    color_rainbow = random(256);
+  }
 }
 
 void Drop::update()
@@ -351,13 +355,15 @@ void loop() {
   update_button();
 
   // ANIMATIONS
-  if (mode == 0)
+  if (mode == 1)
   {
+    drop_animation();
 
-
+  } else
+  {
+    star_animation();
+    drop_animation();
   }
-  star_animation();
-  drop_animation();
 
   // Set the brightness.
   FastLED.setBrightness(led_brightness);

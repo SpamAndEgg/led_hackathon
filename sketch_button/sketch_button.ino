@@ -6,9 +6,9 @@
 #include "FastLED.h"
 
 // -------------------- DEFINE CONSTANTS ----------------------
-// LED AND PIN_BUTTON ARE SWITCHED FOR ONE MODEL
-#define PIN_LED_STRIP 18  
-#define PIN_BUTTON 23  
+// LED AND PIN_BUTTON ARE SWITCHED FOR ONE MODEL (23 and 18)
+#define PIN_LED_STRIP 23 
+#define PIN_BUTTON 18  
 // Number of LEDs on the LED strip
 #define N_LEDS 250
 

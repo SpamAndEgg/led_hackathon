@@ -6,20 +6,18 @@
 #include "FastLED.h"
 
 // -------------------- DEFINE CONSTANTS ----------------------
-// LED AND PIN_BUTTON ARE SWITCHED FOR ONE MODEL
-#define PIN_LED_STRIP 18  
-// #define PIN_BUTTON 23  
+// LED AND PIN_BUTTON ARE SWITCHED FOR ONE MODEL (23 and 18)
+#define PIN_LED_STRIP 23  
+// #define PIN_BUTTON 18  
 // Number of LEDs on the LED strip
 #define N_LEDS 250
 // ANIMATION CONSTANTS
 #define N_STAR 10
 
-
 // -------------------- SETUP VARIABLES -----------------------
 // CRGB is a class from the FastLED package, containing a value for R, G and B.
 // pixel_buffer contains the data that will be written regularly to the LED strip.
 CRGB pixel_buffer[N_LEDS];
-
 
 // -------------------- CLASSES ---------------------------
 // -------------------- CLASS STAR 
